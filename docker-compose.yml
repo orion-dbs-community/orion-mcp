@@ -1,0 +1,26 @@
+services:
+  rstudio:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - .:/home/rstudio/workspace
+    environment:
+      - PASSWORD=user      # pick anything
+      - USERID=1000
+      - GROUPID=1000
+    restart: unless-stopped
+
+  # MCP server — Claude Code connects to this via stdio
+  # To use: add this to your Claude Code MCP config 
+
+  mcp:
+    build: .
+    volumes:
+      - ~/.config/gcloud:/root/.config/gcloud:ro
+    command: ["Rscript", "/mcp_server.R"]
+    stdin_open: true   # needed for stdio MCP transport
+    tty: false
+    environment:
+      - BQ_BILLING_PROJECT=${BQ_BILLING_PROJECT}
+      - SCHEMA_DIR=/data
