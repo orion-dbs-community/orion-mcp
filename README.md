@@ -2,13 +2,29 @@
 
 Connects Claude Desktop to the [ORION-DBs](https://orion-dbs.community/) collection on Google BigQuery, so you can explore open research information datasets (OpenAlex, Crossref, ORCID, DataCite, and more) by asking questions in plain language.
 
-## What it does
+## What it does?
 
-Claude can list available datasets, inspect table schemas, estimate query costs, and run SQL queries — all without you writing a single line of SQL.
+Claude can list datasets, inspect table schemas, estimate query costs, and run SQL queries.
+
+### Available MCP Functions
+
+| Function | Description | GC Account Required |
+|----------|-------------|---------------------|
+| `orion_list_datasets` | List all available datasets in ORION-DBs | ❌ No |
+| `orion_list_tables` | Display all tables in a specific dataset | ❌ No |
+| `orion_get_db_schema` | Inspect the full schema of a table | ❌ No |
+| `orion_estimate_query_cost` | Estimate bytes scanned (and cost) before running a query | ✅ Yes |
+| `orion_run_bq_query` | Execute a SQL query against BigQuery | ✅ Yes |
+
+## How it authenticates?
+
+The MCP server runs in a Docker container and authenticates via Application Default Credentials (ADC): No service account keys to create or share. Your local `gcloud` credentials are used directly, so there's no risk of accidentally leaking tokens.
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- Docker installed and running
+  - **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+  - **Linux**: `docker` and `docker-compose` (via your package manager, e.g., `apt`, `dnf`)
 - [Claude Desktop](https://claude.ai/download) installed
 - A Google account with access to BigQuery (a free [Google Cloud account](https://cloud.google.com/free) is sufficient — you get 1 TB of free queries per month)
 - [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed
@@ -39,7 +55,9 @@ This takes a few minutes the first time while R packages are installed.
 
 ### 4. Add the server to Claude Desktop
 
-Open `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) and add the `orion-dbs` entry inside `mcpServers`:
+#### macOS
+
+Open `~/Library/Application Support/Claude/claude_desktop_config.json` and add the `orion-dbs` entry inside `mcpServers`:
 
 ```json
 {
@@ -61,6 +79,30 @@ Open `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) and
 
 Replace `YOUR_USERNAME` with your macOS username and `YOUR_PROJECT_ID` with your GCP project ID.
 
+#### Linux
+
+Open `~/.config/Claude/claude_desktop_config.json` and add the `orion-dbs` entry inside `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "orion-dbs": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "/home/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
+        "-e", "SCHEMA_DIR=/data",
+        "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
+        "orion-mcp_mcp",
+        "Rscript", "/server.R"
+      ]
+    }
+  }
+}
+```
+
+Replace `YOUR_USERNAME` with your Linux username and `YOUR_PROJECT_ID` with your GCP project ID.
+
 ### 5. Restart Claude Desktop
 
 Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settings > Developer > MCP Servers.
@@ -69,8 +111,13 @@ Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settin
 
 Ask Claude in plain language:
 
+**No Google Cloud account required** — These queries access local schema information:
 - *"What datasets are available in ORION-DBs?"*
 - *"Show me the schema for the Crossref works table."*
+- *"Which versions of OpenAlex are available and how do schemas compare?"*
+
+**Google Cloud account required** — These queries run SQL against BigQuery:
+- *"How many publications were published by University of Göttingen researchers including University Medical Center between 2021-2025 in journals?"*
 - *"How many open access articles were published in 2023, broken down by OA type?"*
 
 ## Cost and safety
