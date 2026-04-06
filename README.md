@@ -69,8 +69,7 @@ Open `~/Library/Application Support/Claude/claude_desktop_config.json` and add t
         "-v", "/Users/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
         "-e", "SCHEMA_DIR=/data",
         "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
-        "orion-mcp_mcp",
-        "Rscript", "/server.R"
+        "orion-mcp_mcp"
       ]
     }
   }
@@ -93,8 +92,7 @@ Open `~/.config/Claude/claude_desktop_config.json` and add the `orion-dbs` entry
         "-v", "/home/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
         "-e", "SCHEMA_DIR=/data",
         "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
-        "orion-mcp_mcp",
-        "Rscript", "/server.R"
+        "orion-mcp_mcp"
       ]
     }
   }

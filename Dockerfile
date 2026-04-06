@@ -5,6 +5,8 @@ RUN echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     cmake \
+    curl \
+    jq \
     libmbedtls-dev \
     libzmq3-dev \
     libsodium-dev \
@@ -23,4 +25,7 @@ RUN install2.r \
 RUN R -e 'install.packages("mcptools", type = "source")'
 
 COPY server.R /server.R
-COPY data/ /data/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

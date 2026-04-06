@@ -18,9 +18,10 @@ services:
     build: .
     volumes:
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: ["Rscript", "/server.R"]
     stdin_open: true   # needed for stdio MCP transport
     tty: false
     environment:
       - BQ_BILLING_PROJECT=${BQ_BILLING_PROJECT}
       - SCHEMA_DIR=/data
+      - SCHEMA_REPO=orion-dbs-community/website   # repo to pull schemas from
+      - SCHEMA_PATH=data                           # folder within that repo
