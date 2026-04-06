@@ -190,7 +190,9 @@ mcp_server(
         "- Never use SELECT * — name only the columns needed to minimise bytes scanned.",
         "- Never use COUNT(*) — always count distinct over a unique identifier (e.g. COUNT(DISTINCT doi)).",
         "- Always lowercase identifiers before joining across collections: LOWER(doi), LOWER(orcid), LOWER(issn).",
-        "- When identifiers are stored as URLs (e.g. https://doi.org/10.1234/...), extract the bare ID with REGEXP_EXTRACT before joining."
+        "- DOI fields may be stored as bare DOIs ('10.1234/foo') or as URLs ('https://doi.org/10.1234/foo') depending on the dataset.",
+        "- Always normalise DOIs before joining using REGEXP_REPLACE (not REGEXP_EXTRACT) to avoid introducing NULLs:",
+        "  LOWER(REGEXP_REPLACE(doi, r'^https?://doi\\.org/', '')) — this safely strips the prefix if present and leaves bare DOIs unchanged."
       ),
       arguments = list(
         sql = type_string("The fully-qualified BigQuery SQL query to execute (include project.dataset.table in the query itself)")
