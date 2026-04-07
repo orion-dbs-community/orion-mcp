@@ -72,7 +72,7 @@ dry_run_cache <- character(0)
 
 normalize_sql <- function(sql) gsub("\\s+", " ", trimws(sql))
 
-orion_estimate_query_cost <- function(sql, ...) {
+orion_estimate_query_cost <- function(sql) {
   billing <- Sys.getenv("BQ_BILLING_PROJECT")
   if (billing == "") stop("BQ_BILLING_PROJECT environment variable not set")
 
@@ -93,11 +93,13 @@ orion_estimate_query_cost <- function(sql, ...) {
   ) |> toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
-orion_run_bq_query <- function(sql, ...) {
+orion_run_bq_query <- function(sql) {
   if (!normalize_sql(sql) %in% dry_run_cache) {
     stop(
-      "Query must be dry-run with orion_estimate_query_cost before executing. ",
-      "Call orion_estimate_query_cost first and present the cost to the user."
+      "STOP. This exact SQL has not been dry-run. ",
+      "Do NOT modify the SQL. ",
+      "Call orion_estimate_query_cost with this exact SQL, ",
+      "present the cost to the user, and wait for confirmation."
     )
   }
 
