@@ -7,14 +7,14 @@ suppressPackageStartupMessages({
   library(bigrquery)
 })
 
-SCHEMA_DIR <- Sys.getenv("SCHEMA_DIR", "/data")
+SCHEMA_DIR  <- Sys.getenv("SCHEMA_DIR", "/data")
+EXPORT_DIR  <- Sys.getenv("EXPORT_DIR", "/data/exports")
 
 # Use application default credentials (gcloud ADC mounted in Docker).
 # Suppresses interactive OAuth prompts in non-interactive containers.
 bq_auth(token = gargle::credentials_app_default(
   scopes = c(
-    "https://www.googleapis.com/auth/bigquery",
-    "https://www.googleapis.com/auth/cloud-platform"
+    "https://www.googleapis.com/auth/bigquery"
   )
 ))
 
@@ -24,14 +24,14 @@ read_jsonl <- function(path) {
   stream_in(con, verbose = FALSE)
 }
 
-all_data <- function() {
+schema_data <-
   list.files(SCHEMA_DIR, full.names = TRUE, pattern = "\\.jsonl$") |>
-    map(read_jsonl) |>
-    list_rbind()
-}
+  map(read_jsonl) |>
+  list_rbind()
+
 
 orion_list_datasets <- function() {
-  all_data() |>
+  schema_data |>
     summarise(
       dataset_description = first(dataset_description),
       tables = n(),
@@ -41,30 +41,23 @@ orion_list_datasets <- function() {
 }
 
 orion_list_tables <- function(project, dataset) {
-  all_data() |>
+  schema_data |>
     filter(.data$project == .env$project, .data$dataset == .env$dataset) |>
     select(table, description) |>
     toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
-strip_nested_descriptions <- function(schema) {
-  if ("fields" %in% names(schema)) {
-    schema$fields <- map(schema$fields, \(f) {
-      if (is.data.frame(f)) select(f, -any_of("description")) |> strip_nested_descriptions()
-      else f
-    })
-  }
-  schema
-}
-
 orion_get_db_schema <- function(project, dataset, table) {
-  result <- all_data() |>
-    filter(.data$project == .env$project, .data$dataset == .env$dataset, .data$table == .env$table)
+  result <- schema_data |>
+    filter(
+      .data$project == .env$project,
+      .data$dataset == .env$dataset,
+      .data$table == .env$table
+    )
 
   if (nrow(result) == 0) stop("Not found: ", project, "/", dataset, "/", table)
 
   result$schema[[1]] |>
-    strip_nested_descriptions() |>
     toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
@@ -88,12 +81,12 @@ orion_estimate_query_cost <- function(sql) {
     message = glue::glue(
       "This query will scan {gb} GB (estimated cost: ${round(bytes / 1e12 * 6.25, 4)}).",
       " Monthly free tier usage is unknown — do not assume the query is free.",
-      " Ask the user: 'Shall I run this query?' and wait for explicit confirmation before proceeding."
+      " ALWAYS ask the user: 'Shall I run this query?' and wait for explicit confirmation before proceeding."
     )
   ) |> toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
-orion_run_bq_query <- function(sql) {
+.execute_bq_query <- function(sql) {
   if (!normalize_sql(sql) %in% dry_run_cache) {
     stop(
       "STOP. This exact SQL has not been dry-run. ",
@@ -103,14 +96,14 @@ orion_run_bq_query <- function(sql) {
     )
   }
 
-  dry_run_cache <<- setdiff(dry_run_cache, normalize_sql(sql))
-
-  if (grepl("SELECT\\s+\\*", sql, ignore.case = TRUE)) {
+  if (grepl("SELECT\\s+\\*|\\w+\\.\\*", sql, ignore.case = TRUE)) {
     stop(
-      "SELECT * is not allowed — ",
+      "SELECT * and table.* are not allowed — ",
       "specify only the columns needed to avoid scanning unnecessary data."
     )
   }
+
+  dry_run_cache <<- setdiff(dry_run_cache, normalize_sql(sql))
 
   billing <- Sys.getenv("BQ_BILLING_PROJECT")
   if (billing == "") stop("BQ_BILLING_PROJECT environment variable not set")
@@ -118,8 +111,46 @@ orion_run_bq_query <- function(sql) {
   con <- dbConnect(bigquery(), project = billing)
   on.exit(dbDisconnect(con))
 
-  result <- dbGetQuery(con, sql)
-  toJSON(result, auto_unbox = TRUE, pretty = TRUE)
+  dbGetQuery(con, sql) |> tibble::as_tibble()
+}
+
+orion_run_bq_query <- function(sql) {
+  result <- .execute_bq_query(sql)
+
+  if (nrow(result) > 1000) {
+    paste(capture.output(print(result)), collapse = "\n")
+  } else {
+    toJSON(result, auto_unbox = TRUE, pretty = TRUE)
+  }
+}
+
+orion_export_bq_query <- function(sql, filename = NULL) {
+  result <- .execute_bq_query(sql)
+
+  is_nested <- any(purrr::map_lgl(result, is.list))
+  ext <- if (is_nested) "json" else "csv"
+
+  if (is.null(filename)) {
+    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    filename <- paste0("orion_export_", timestamp, ".", ext)
+  }
+
+  dir.create(EXPORT_DIR, showWarnings = FALSE, recursive = TRUE)
+  path <- file.path(EXPORT_DIR, filename)
+
+  if (is_nested) {
+    write(toJSON(result, auto_unbox = TRUE, pretty = TRUE), path)
+  } else {
+    readr::write_csv(result, path)
+  }
+
+  list(
+    path = path,
+    format = ext,
+    rows = nrow(result),
+    columns = ncol(result),
+    message = glue::glue("Exported {nrow(result)} rows × {ncol(result)} columns to {path}")
+  ) |> toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
 mcp_server(
@@ -198,6 +229,22 @@ mcp_server(
       ),
       arguments = list(
         sql = type_string("The fully-qualified BigQuery SQL query to execute (include project.dataset.table in the query itself)")
+      )
+    ),
+    tool(
+      orion_export_bq_query,
+      paste(
+        "ALTERNATIVE TO STEP 5: Execute a BigQuery SQL query and export full results to a file.",
+        "Use this instead of orion_run_bq_query when the user wants to save or download the data,",
+        "or when results are expected to be large (many rows) and returning them inline is impractical.",
+        "Flat results (no nested/repeated fields) are exported as CSV; nested results as JSON.",
+        "PREREQUISITE: orion_estimate_query_cost MUST have been called for this exact SQL",
+        "AND the user must have explicitly confirmed they want to proceed.",
+        "Returns the file path, format, and row/column count — not the data itself."
+      ),
+      arguments = list(
+        sql = type_string("The fully-qualified BigQuery SQL query to execute (include project.dataset.table in the query itself)"),
+        filename = type_string("Optional filename for the export (e.g. 'results.csv'). Auto-generated with timestamp if omitted.")
       )
     )
   )
