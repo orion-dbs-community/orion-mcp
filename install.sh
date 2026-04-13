@@ -41,10 +41,7 @@ if [ ! -f "$ADC_FILE" ]; then
   echo ""
   echo "  Run the following command, then re-run this installer:"
   echo ""
-  echo -e "  ${BOLD}gcloud auth application-default login \\${RESET}"
-  echo -e "  ${BOLD}  --scopes=https://www.googleapis.com/auth/bigquery.readonly${RESET}"
-  echo ""
-  echo "  This limits the credentials to read-only BigQuery access."
+  echo -e "  ${BOLD}gcloud auth application-default login${RESET}"
   echo ""
   exit 1
 fi

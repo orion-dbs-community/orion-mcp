@@ -35,11 +35,10 @@ Results appear in your Claude conversation — the same as anything else you dis
 **1. Authenticate with Google Cloud**
 
 ```bash
-gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/bigquery.readonly
+gcloud auth application-default login
 ```
 
-This opens a browser window and stores credentials in `~/.config/gcloud/`. You only need to do this once. The `bigquery.readonly` scope limits access to read-only BigQuery operations.
+This opens a browser window and stores credentials in `~/.config/gcloud/`. You only need to do this once. When the MCP server starts, it requests only a `bigquery.readonly` access token from these credentials — the narrowest scope needed to run queries.
 
 **2. Run the installer**
 
@@ -69,8 +68,7 @@ Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settin
 ### 1. Authenticate
 
 ```bash
-gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/bigquery.readonly
+gcloud auth application-default login
 ```
 
 ### 2. Pull the image
