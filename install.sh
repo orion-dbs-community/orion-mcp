@@ -53,13 +53,13 @@ if docker pull "$IMAGE"; then
   success "Image pulled: $IMAGE"
 else
   warn "Could not pull from registry. Attempting local build..."
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  if [ -f "$SCRIPT_DIR/Dockerfile" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+  if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Dockerfile" ]; then
     docker build -t orion-mcp_mcp "$SCRIPT_DIR"
     IMAGE="orion-mcp_mcp"
     success "Local image built: $IMAGE"
   else
-    die "Could not pull image and no Dockerfile found. Please check your internet connection or clone the repo first."
+    die "Could not pull image from registry. The image may still be building — check https://github.com/orion-dbs-community/orion-mcp/actions and re-run this script once the workflow completes."
   fi
 fi
 
