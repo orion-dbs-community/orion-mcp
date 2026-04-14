@@ -20,7 +20,7 @@ Claude can list datasets, inspect table schemas, estimate query costs, and run S
 No. The MCP server runs in an isolated Docker container with no access to your filesystem. The only thing shared with the container is your Google Cloud credentials directory (`~/.config/gcloud`), mounted read-only so the server can authenticate to BigQuery.
 
 **Can Claude read my private BigQuery datasets?**
-Only if you tell it their names — Claude has no way to enumerate your private datasets. Note that accessing a private dataset requires both the right OAuth scope *and* the `roles/bigquery.dataViewer` IAM role on that dataset. The installer sets up credentials with the `bigquery.readonly` scope, which is the minimum needed to run queries. For your own GCP projects, your account likely already has the necessary IAM role, so if Claude were given a private dataset name it could query it. The practical protection is that Claude only knows what you tell it.
+Only if you tell it their names — Claude has no way to enumerate your private datasets. Accessing a private dataset requires both the `bigquery.readonly` OAuth scope *and* the `roles/bigquery.dataViewer` IAM role on that specific dataset. For your own GCP projects, your account likely already has that role — so if Claude were given a private dataset name it could query it. The practical protection is that Claude only knows what you tell it.
 
 **Can it run up a big BigQuery bill without me knowing?**
 No. Every query is preceded by a free dry-run that estimates the cost. Claude is instructed to present the estimate and wait for your explicit confirmation before executing. `SELECT *` queries are blocked entirely.
@@ -28,58 +28,37 @@ No. Every query is preceded by a free dry-run that estimates the cost. Claude is
 **Do query results leave my machine?**
 Results appear in your Claude conversation — the same as anything else you discuss with Claude. They are not sent anywhere else.
 
-## Quick start
+## Installation
 
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Claude Desktop](https://claude.ai/download), [gcloud CLI](https://cloud.google.com/sdk/docs/install)
 
-**1. Authenticate with Google Cloud**
+### 1. Authenticate with Google Cloud
 
 ```bash
 gcloud auth application-default login
 ```
 
-This opens a browser window and stores credentials in `~/.config/gcloud/`. You only need to do this once. When the MCP server starts, it requests only a `bigquery.readonly` access token from these credentials — the narrowest scope needed to run queries.
+This opens a browser window and stores credentials in `~/.config/gcloud/`. You only need to do this once. When the MCP server starts, it requests only a `bigquery.readonly` access token — the narrowest scope needed to run queries.
 
-**2. Run the installer**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/orion-dbs-community/orion-mcp/main/install.sh | bash
-```
-
-Or, if you have already cloned the repo:
-
-```bash
-./install.sh
-```
-
-The installer will:
-- Check Docker and gcloud are available
-- Pull the pre-built Docker image
-- Ask for your GCP billing project ID (needed to run queries; leave blank to skip)
-- Write the MCP server entry into your Claude Desktop config
-
-**3. Restart Claude Desktop**
-
-Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settings → Developer → MCP Servers.
-
-<details>
-<summary>Manual setup (advanced / Windows)</summary>
-
-### 1. Authenticate
-
-```bash
-gcloud auth application-default login
-```
-
-### 2. Pull the image
+### 2. Pull the Docker image
 
 ```bash
 docker pull ghcr.io/orion-dbs-community/orion-mcp:latest
 ```
 
-### 3. Edit Claude Desktop config
+### 3. Add the server to Claude Desktop
 
-#### macOS — `~/Library/Application Support/Claude/claude_desktop_config.json`
+Open your Claude Desktop config file in a text editor:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+  > `Library` is a hidden folder. Open it from Terminal with:
+  > ```bash
+  > open ~/Library/Application\ Support/Claude/claude_desktop_config.json
+  > ```
+  > Or in Finder: **Go → Go to Folder** (`⇧⌘G`) and paste `~/Library/Application Support/Claude/`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+Add the `orion-dbs` entry inside `mcpServers`:
 
 ```json
 {
@@ -89,7 +68,6 @@ docker pull ghcr.io/orion-dbs-community/orion-mcp:latest
       "args": [
         "run", "--rm", "-i",
         "-v", "/Users/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
-        "-e", "SCHEMA_DIR=/data",
         "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
         "ghcr.io/orion-dbs-community/orion-mcp:latest"
       ]
@@ -98,30 +76,15 @@ docker pull ghcr.io/orion-dbs-community/orion-mcp:latest
 }
 ```
 
-#### Linux — `~/.config/Claude/claude_desktop_config.json`
+Replace:
+- `YOUR_USERNAME` — your macOS/Linux username (on Linux use `/home/YOUR_USERNAME/...`)
+- `YOUR_PROJECT_ID` — your GCP project ID, e.g. `my-project-123456`. Find it in the [Google Cloud Console](https://console.cloud.google.com/) by clicking the project selector in the top bar. 
 
-```json
-{
-  "mcpServers": {
-    "orion-dbs": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-v", "/home/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
-        "-e", "SCHEMA_DIR=/data",
-        "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
-        "ghcr.io/orion-dbs-community/orion-mcp:latest"
-      ]
-    }
-  }
-}
-```
-
-Replace `YOUR_USERNAME` with your username and `YOUR_PROJECT_ID` with your GCP project ID.
+> Schema browsing (`orion_list_datasets`, `orion_list_tables`, `orion_get_db_schema`) works without a billing project. You can omit the `BQ_BILLING_PROJECT` line entirely if you only want to explore schemas.
 
 ### 4. Restart Claude Desktop
 
-</details>
+Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settings → Developer → MCP Servers.
 
 ## Usage
 
@@ -159,10 +122,4 @@ cd orion-mcp
 docker build -t orion-mcp_mcp .
 ```
 
-Then update the image name in your Claude Desktop config to `orion-mcp_mcp`.
-
-If you pull new changes, rebuild before restarting Claude Desktop:
-
-```bash
-docker build -t orion-mcp_mcp .
-```
+Then use `orion-mcp_mcp` as the image name in your Claude Desktop config.
