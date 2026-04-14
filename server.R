@@ -63,14 +63,14 @@ dry_run_cache <- character(0)
 
 normalize_sql <- function(sql) gsub("\\s+", " ", trimws(sql))
 
-orion_estimate_query_cost <- function(sql) {
+orion_estimate_query_cost <- function(query) {
   billing <- Sys.getenv("BQ_BILLING_PROJECT")
   if (billing == "") stop("BQ_BILLING_PROJECT environment variable not set")
 
-  bytes <- as.numeric(bq_perform_query_dry_run(sql, billing = billing))
+  bytes <- as.numeric(bq_perform_query_dry_run(query, billing = billing))
   gb <- round(bytes / 1e9, 3)
 
-  dry_run_cache <<- unique(c(dry_run_cache, normalize_sql(sql)))
+  dry_run_cache <<- unique(c(dry_run_cache, normalize_sql(query)))
 
   list(
     bytes_processed = bytes,
@@ -112,8 +112,8 @@ orion_estimate_query_cost <- function(sql) {
   dbGetQuery(con, sql) |> tibble::as_tibble()
 }
 
-orion_run_bq_query <- function(sql) {
-  result <- .execute_bq_query(sql)
+orion_run_bq_query <- function(query) {
+  result <- .execute_bq_query(query)
 
   if (nrow(result) > 1000) {
     paste(capture.output(print(result)), collapse = "\n")
@@ -122,8 +122,8 @@ orion_run_bq_query <- function(sql) {
   }
 }
 
-orion_export_bq_query <- function(sql, filename = NULL) {
-  result <- .execute_bq_query(sql)
+orion_export_bq_query <- function(query, filename = NULL) {
+  result <- .execute_bq_query(query)
 
   is_nested <- any(purrr::map_lgl(result, is.list))
   ext <- if (is_nested) "json" else "csv"
