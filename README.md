@@ -82,6 +82,31 @@ Replace:
 
 > Schema browsing (`orion_list_datasets`, `orion_list_tables`, `orion_get_db_schema`) works without a billing project. You can omit the `BQ_BILLING_PROJECT` line entirely if you only want to explore schemas.
 
+#### Accessing exported files
+
+When you ask Claude to export query results, files are written to `/data/exports` **inside the container**. To access them on your machine, add a volume mount:
+
+```json
+{
+  "mcpServers": {
+    "orion-dbs": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "/Users/YOUR_USERNAME/.config/gcloud:/root/.config/gcloud:ro",
+        "-v", "/Users/YOUR_USERNAME/Downloads/orion-exports:/data/exports",
+        "-e", "BQ_BILLING_PROJECT=YOUR_PROJECT_ID",
+        "ghcr.io/orion-dbs-community/orion-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+The second `-v` line mounts `~/Downloads/orion-exports` on your machine to `/data/exports` in the container. Exported CSVs and JSON files will appear there. You can use any directory you like — just create it first (`mkdir ~/Downloads/orion-exports`).
+
+To change the in-container export path, set the `EXPORT_DIR` environment variable (e.g. `-e EXPORT_DIR=/tmp/exports`).
+
 ### 4. Restart Claude Desktop
 
 Quit and reopen Claude Desktop. You should see **orion-dbs** listed under Settings → Developer → MCP Servers.

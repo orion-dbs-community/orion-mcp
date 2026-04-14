@@ -18,6 +18,7 @@ services:
     build: .
     volumes:
       - ~/.config/gcloud:/root/.config/gcloud:ro
+      - ./exports:/data/exports
     stdin_open: true   # needed for stdio MCP transport
     tty: false
     environment:

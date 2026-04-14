@@ -264,7 +264,13 @@ mcp_server(
         "Flat results (no nested/repeated fields) are exported as CSV; nested results as JSON.",
         "PREREQUISITE: orion_estimate_query_cost MUST have been called for this exact SQL",
         "AND the user must have explicitly confirmed they want to proceed.",
-        "Returns the file path, format, and row/column count — not the data itself."
+        "Returns the file path, format, and row/column count — not the data itself.",
+        "IMPORTANT — accessing the exported file: the path returned (e.g. /data/exports/results.csv)",
+        "is inside the Docker container, not on the host machine.",
+        "To access the file, the user must mount a host directory to /data/exports when starting the container,",
+        "e.g. add '-v ~/Downloads/orion-exports:/data/exports' to their docker run command.",
+        "Without this mount the file is lost when the container stops.",
+        "If the user has not set up a volume mount, tell them how to add it before they try to open the file."
       ),
       arguments = list(
         sql = type_string("The fully-qualified BigQuery SQL query to execute (include project.dataset.table in the query itself)"),
