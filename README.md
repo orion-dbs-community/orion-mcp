@@ -1,9 +1,9 @@
-# orion-mcp: MCP Server for open research information provided by the ORION-DBs collective.
+# orion-mcp: MCP Server for ORION-DBs collections.
 
 `orion-mcp` is a [Model Context Protocol (MCP) server](https://modelcontextprotocol.io/docs/getting-started/intro) that lets you query the [ORION-DBs](https://orion-dbs.community/) collections on Google BigQuery using an LLM. It supports OpenAlex, Crossref, ORCID, DataCite, and more. 
-It is one example of how MCP servers can support work using open research information. Aaron Tay's gives broader context about the [potential of generic LLM in combination with academic MCP server](https://aarontay.substack.com/p/creating-your-own-research-assistant).
+It is an early, experimental implementation focused on open research information. Aaron Tay's [broader context about the potential of LLMs in combination with academic MCP servers](https://aarontay.substack.com/p/creating-your-own-research-assistant) is a useful general introduction.
 
-`orion-mcp` is an early, experimental implementation focused on open research information. Contributions and feedback are welcome via GitHub issues.
+Contributions and feedback are welcome via GitHub issues.
 
 ## How it works
 
@@ -130,7 +130,7 @@ Then use `orion-mcp_mcp` as the image name in your Claude Desktop config.
 
 The server is implemented in R using the [ellmer](https://ellmer.tidyverse.org/) and [mcptools](https://github.com/posit-dev/mcptools) packages. Contributions and bug reports are welcome via GitHub issues.
 
-If Claude misunderstands your question, produces unexpected results, or queries the wrong dataset, please open a GitHub issue describing what you asked and what happened. That kind of feedback is just as valuable as code contributions, becausez it helps improve the tool descriptions that guide the LLM.
+If Claude misunderstands your question, produces unexpected results, or queries the wrong dataset, please open a GitHub issue describing what you asked and what happened. That kind of feedback is just as valuable as code contributions, because it helps improve the tool descriptions that guide the LLM.
 
 ## Contact
 
