@@ -101,8 +101,6 @@ orion_estimate_query_cost <- function(query) {
     )
   }
 
-  dry_run_cache <<- setdiff(dry_run_cache, normalize_sql(sql))
-
   billing <- Sys.getenv("BQ_BILLING_PROJECT")
   if (billing == "") stop("BQ_BILLING_PROJECT environment variable not set")
 
