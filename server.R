@@ -235,6 +235,13 @@ mcp_server(
         "After receiving the cost estimate, STOP and present it to the user in plain language,",
         "e.g. 'This query will scan 4.2 GB and cost approximately $0.03. Shall I run it?'",
         "Do NOT call orion_run_bq_query until the user explicitly confirms they want to proceed.",
+        "CRITICAL: the SQL passed to orion_run_bq_query MUST be",
+        "byte-for-byte identical to the SQL passed here.",
+        "Do NOT reformat, rewrite, or improve the SQL after the dry run.",
+        "If the user asks to change the query in any way,",
+        "call orion_estimate_query_cost again with the new SQL",
+        "before presenting a cost estimate or running it.",
+        "Never reuse a previous cost estimate for modified SQL.",
         "If the estimate exceeds 100 GB, highlight this prominently and strongly recommend the user confirm."
       ),
       arguments = list(
